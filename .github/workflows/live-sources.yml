@@ -1,0 +1,55 @@
+name: Live data sources
+
+# The whole provider-chain design exists because free tiers change without
+# warning - Stooq disappeared behind a bot check mid-build. This is the canary:
+# it hits the real upstreams once a day and fails loudly when a leg goes dark,
+# so the README stops being quietly wrong.
+#
+# It is deliberately NOT part of CI. A third-party outage must never block a
+# pull request.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"   # 06:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe ${{ matrix.source }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [commodities, fx, weather]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install requests
+
+      - name: Hit the real upstreams
+        env:
+          LAST_KNOWN_STATE_PATH: ${{ runner.temp }}/last_known.json
+        run: |
+          set -o pipefail
+          python -m ingestion.run_poller --source ${{ matrix.source }} \
+            --once --dry-run 2>&1 | tee out.txt
+
+      # Every event carries its own provenance. If the only thing that answered
+      # was the simulated fallback, every live provider for this leg is down.
+      - name: A live provider must have answered
+        run: |
+          if ! grep -q '"is_simulated":false' out.txt; then
+            echo "::error title=${{ matrix.source }} has no working live source::Every provider in the chain fell through to the simulated fallback."
+            grep -oE '"source":"[^"]+"' out.txt | sort -u || true
+            exit 1
+          fi
+          echo "### ${{ matrix.source }} :white_check_mark:" >> "$GITHUB_STEP_SUMMARY"
+          grep -oE '"source":"[^"]+"' out.txt | sort -u >> "$GITHUB_STEP_SUMMARY"

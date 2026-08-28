@@ -1,0 +1,4 @@
+# Host-side tooling: run the pollers with --dry-run and the unit tests without
+# bringing up any containers.
+requests==2.32.3
+pytest==8.3.3

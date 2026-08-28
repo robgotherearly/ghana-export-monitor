@@ -1,0 +1,178 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same branch makes the previous run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  quality:
+    name: Lint & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install tooling
+        run: pip install ruff pytest requests
+
+      - name: Ruff
+        run: ruff check --output-format=github .
+
+      - name: Unit tests
+        run: pytest tests
+
+  dashboards:
+    name: Dashboards match their generator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      # The Grafana JSON is generated, so hand-editing it would silently drift
+      # from scripts/build_dashboards.py. Regenerate and require no diff.
+      - name: Regenerate
+        run: python scripts/build_dashboards.py
+
+      - name: Committed JSON must match the generator
+        run: |
+          if ! git diff --quiet -- grafana/dashboards; then
+            echo "::error::grafana/dashboards is stale. Run: python scripts/build_dashboards.py"
+            git diff --stat -- grafana/dashboards
+            exit 1
+          fi
+
+  schema:
+    name: Compose config & Postgres schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker compose config is valid
+        run: docker compose config --quiet
+
+      # An init script that throws leaves Postgres up but empty, so assert the
+      # tables actually exist rather than trusting the container came up.
+      - name: Schema applies cleanly
+        run: |
+          docker run -d --name pg \
+            -e POSTGRES_USER=ghana -e POSTGRES_PASSWORD=ghana -e POSTGRES_DB=ghana_dep \
+            -v "$PWD/sql/init:/docker-entrypoint-initdb.d:ro" \
+            postgres:16-alpine
+          for _ in $(seq 1 40); do
+            docker exec pg pg_isready -U ghana -d ghana_dep >/dev/null 2>&1 && break
+            sleep 2
+          done
+          docker exec pg psql -U ghana -d ghana_dep -c "\dt market.*"
+          tables=$(docker exec pg psql -U ghana -d ghana_dep -tAc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='market'")
+          echo "market tables: $tables"
+          test "$tables" -ge 12
+          # the Grafana role must exist and be read-only
+          docker exec pg psql -U ghana -d ghana_dep -tAc \
+            "SELECT 1 FROM pg_roles WHERE rolname='grafana_ro'" | grep -q 1
+
+      - name: Teardown
+        if: always()
+        run: docker rm -f pg || true
+
+  build:
+    name: Build ${{ matrix.name }} image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: pollers
+            file: docker/pollers.Dockerfile
+          - name: spark
+            file: docker/spark.Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: false
+          load: false
+          tags: ghana-dep/${{ matrix.name }}:ci
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  integration:
+    name: Kafka round-trip
+    runs-on: ubuntu-latest
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the poller image
+        run: docker compose build poller-commodities
+
+      # --wait blocks on the healthchecks, so this also exercises the broker's
+      # readiness probe rather than just "did the container start".
+      - name: Start Kafka and Postgres
+        run: docker compose up -d --wait kafka postgres
+
+      - name: Create topics
+        run: docker compose up --exit-code-from kafka-init kafka-init
+
+      - name: Topics exist with the expected partitioning
+        run: |
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server kafka:19092 --describe --topic commodity.prices.raw
+          for t in commodity.prices.raw fx.rates.raw weather.regions.raw \
+                   commodity.metrics alerts.flagged; do
+            docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh \
+              --bootstrap-server kafka:19092 --list | grep -qx "$t" \
+              || { echo "::error::missing topic $t"; exit 1; }
+          done
+
+      # Forced onto the simulated provider on purpose: CI must not depend on a
+      # third-party free tier being up. The live sources are probed separately
+      # by the live-sources workflow, where a failure is informational.
+      - name: Produce one cycle through the real broker
+        run: |
+          docker compose run --rm --no-deps \
+            -e COMMODITY_PROVIDERS=simulated \
+            -e ALLOW_SIMULATED_FALLBACK=true \
+            poller-commodities --source commodities --once
+
+      - name: Messages actually landed on the topic
+        run: |
+          total=$(docker compose exec -T kafka /opt/kafka/bin/kafka-get-offsets.sh \
+            --bootstrap-server kafka:19092 --topic commodity.prices.raw \
+            | awk -F: '{s += $3} END {print s + 0}')
+          echo "commodity.prices.raw total offsets: $total"
+          test "$total" -ge 3
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v || true

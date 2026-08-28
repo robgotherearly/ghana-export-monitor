@@ -1,0 +1,17 @@
+# Everything in this repo is consumed by Linux containers. A Windows clone that
+# checks out CRLF will hand `\r` to bash inside Alpine ("\r: command not found")
+# and break the topic-creation script, so pin LF for anything executable.
+* text=auto eol=lf
+
+*.sh          text eol=lf
+*.Dockerfile  text eol=lf
+Dockerfile    text eol=lf
+Makefile      text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.sql         text eol=lf
+*.py          text eol=lf
+*.json        text eol=lf
+
+*.png binary
+*.jpg binary

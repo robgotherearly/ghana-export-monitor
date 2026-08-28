@@ -1,0 +1,340 @@
+name: ghana-dep
+
+# ---------------------------------------------------------------------------
+# Ghana Export Commodity & Cedi Monitoring Platform
+#
+#   pollers -> Kafka -> Spark Structured Streaming -> Postgres -> Grafana
+#                    \-> Delta lake -> Spark batch  ->/
+#
+# Default profile runs the whole live path. Optional profiles:
+#   --profile tools    Kafka UI + the alerts.flagged notifier
+#   --profile cluster  a real Spark standalone master/worker pair
+#   --profile batch    the nightly analytical job (also runnable on demand)
+# ---------------------------------------------------------------------------
+
+x-spark-env: &spark-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-ghana_dep}
+  POSTGRES_USER: ${POSTGRES_USER:-ghana}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ghana}
+  POSTGRES_SCHEMA: market
+  LAKE_PATH: /data/lake
+  CHECKPOINT_PATH: /data/checkpoints
+  LAKE_FORMAT: delta
+  SPARK_MASTER_URL: ${SPARK_MASTER_URL:-local[*]}
+  SPARK_SHUFFLE_PARTITIONS: ${SPARK_SHUFFLE_PARTITIONS:-4}
+  SINK_PARTITIONS: ${SINK_PARTITIONS:-1}
+  SPARK_LOG_LEVEL: ${SPARK_LOG_LEVEL:-WARN}
+  PRICE_WINDOW: ${PRICE_WINDOW:-5 minutes}
+  PRICE_SLIDE: ${PRICE_SLIDE:-1 minute}
+  WATERMARK_DELAY: ${WATERMARK_DELAY:-2 minutes}
+  TRIGGER_SECONDS: ${TRIGGER_SECONDS:-20}
+  ZSCORE_THRESHOLD: ${ZSCORE_THRESHOLD:-2.5}
+  PRICE_JUMP_PCT: ${PRICE_JUMP_PCT:-1.5}
+  CEDI_DEPRECIATION_PCT: ${CEDI_DEPRECIATION_PCT:-0.5}
+  TZ: UTC
+
+x-poller-env: &poller-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  ALLOW_SIMULATED_FALLBACK: ${ALLOW_SIMULATED_FALLBACK:-true}
+  TWELVEDATA_API_KEY: ${TWELVEDATA_API_KEY:-}
+  COMMODITIES_API_KEY: ${COMMODITIES_API_KEY:-}
+  API_NINJAS_API_KEY: ${API_NINJAS_API_KEY:-}
+  EXCHANGERATE_HOST_API_KEY: ${EXCHANGERATE_HOST_API_KEY:-}
+  OPENWEATHERMAP_API_KEY: ${OPENWEATHERMAP_API_KEY:-}
+  TZ: UTC
+
+services:
+  # -------------------------------------------------------------------------
+  # Streaming bus
+  # -------------------------------------------------------------------------
+  kafka:
+    build:
+      context: .
+      dockerfile: docker/kafka.Dockerfile
+    image: ghana-dep/kafka:3.8.1
+    container_name: gdep-kafka
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-9092}:9092"
+    environment:
+      CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_LISTENERS: INTERNAL://:19092,CONTROLLER://:9093,EXTERNAL://:9092
+      # INTERNAL is what every container uses; EXTERNAL is for tools on the host
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://localhost:${KAFKA_EXTERNAL_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      # a 512 MB heap is plenty for this throughput and leaves room for Spark
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      # Deliberately a cheap TCP probe. kafka-broker-api-versions.sh starts a
+      # whole JVM per run, which on a small Docker engine is enough to make a
+      # perfectly healthy broker time out and get marked unhealthy. Real
+      # readiness is enforced by scripts/create-topics.sh, which retries against
+      # the admin API before creating anything.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/19092"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  kafka-init:
+    image: ghana-dep/kafka:3.8.1
+    container_name: gdep-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/scripts/create-topics.sh"]
+    volumes:
+      - ./scripts/create-topics.sh:/scripts/create-topics.sh:ro
+    restart: "no"
+
+  # -------------------------------------------------------------------------
+  # Serving store
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: gdep-postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ghana_dep}
+      POSTGRES_USER: ${POSTGRES_USER:-ghana}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ghana}
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ghana} -d ${POSTGRES_DB:-ghana_dep}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Ingestion
+  # -------------------------------------------------------------------------
+  poller-commodities:
+    build:
+      context: .
+      dockerfile: docker/pollers.Dockerfile
+    image: ghana-dep/pollers:latest
+    container_name: gdep-poller-commodities
+    command: ["--source", "commodities"]
+    environment:
+      <<: *poller-env
+      COMMODITY_POLL_SECONDS: ${COMMODITY_POLL_SECONDS:-60}
+      COMMODITY_PROVIDERS: ${COMMODITY_PROVIDERS:-yahoo,twelvedata,api_ninjas,commodities_api,simulated}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  poller-fx:
+    image: ghana-dep/pollers:latest
+    container_name: gdep-poller-fx
+    command: ["--source", "fx"]
+    environment:
+      <<: *poller-env
+      FX_POLL_SECONDS: ${FX_POLL_SECONDS:-30}
+      FX_PROVIDERS: ${FX_PROVIDERS:-open_er_api,exchangerate_host,twelvedata,frankfurter,simulated}
+    depends_on:
+      poller-commodities:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  poller-weather:
+    image: ghana-dep/pollers:latest
+    container_name: gdep-poller-weather
+    command: ["--source", "weather"]
+    environment:
+      <<: *poller-env
+      WEATHER_POLL_SECONDS: ${WEATHER_POLL_SECONDS:-120}
+      WEATHER_PROVIDERS: ${WEATHER_PROVIDERS:-open_meteo,openweathermap,simulated}
+    depends_on:
+      poller-commodities:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Processing
+  # -------------------------------------------------------------------------
+  spark-streaming:
+    build:
+      context: .
+      dockerfile: docker/spark.Dockerfile
+    image: ghana-dep/spark:3.5.3
+    container_name: gdep-spark-streaming
+    ports:
+      - "${SPARK_UI_PORT:-4040}:4040"
+    environment:
+      <<: *spark-env
+      STARTING_OFFSETS: ${STARTING_OFFSETS:-latest}
+    command:
+      - spark-submit
+      - --driver-memory
+      - ${SPARK_DRIVER_MEMORY:-1024m}
+      - /opt/app/streaming/stream_metrics.py
+    volumes:
+      - lake-data:/data/lake
+      - checkpoint-data:/data/checkpoints
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # On-demand / nightly analytical job:
+  #   docker compose run --rm spark-batch
+  spark-batch:
+    image: ghana-dep/spark:3.5.3
+    container_name: gdep-spark-batch
+    profiles: ["batch"]
+    environment:
+      <<: *spark-env
+    command:
+      - spark-submit
+      - --driver-memory
+      - ${SPARK_BATCH_MEMORY:-1g}
+      - /opt/app/batch/daily_batch.py
+      - --days
+      - "30"
+    volumes:
+      - lake-data:/data/lake
+      - checkpoint-data:/data/checkpoints
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # -------------------------------------------------------------------------
+  # Serving / visual
+  # -------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: gdep-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      # anonymous viewing so the dashboard link works without a login prompt
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_MIN_REFRESH_INTERVAL: "5s"
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+      GDEP_PG_HOST: postgres:5432
+      GDEP_PG_DB: ${POSTGRES_DB:-ghana_dep}
+      TZ: UTC
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Optional: tooling  (docker compose --profile tools up -d)
+  # -------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: gdep-kafka-ui
+    profiles: ["tools"]
+    ports:
+      - "${KAFKA_UI_PORT:-8080}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ghana-dep
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
+      DYNAMIC_CONFIG_ENABLED: "true"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  alert-notifier:
+    image: ghana-dep/pollers:latest
+    container_name: gdep-alert-notifier
+    profiles: ["tools"]
+    entrypoint: ["python", "-m", "ingestion.alert_notifier"]
+    environment:
+      <<: *poller-env
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Optional: a real Spark standalone cluster instead of local[*]
+  #   docker compose --profile cluster up -d
+  #   SPARK_MASTER_URL=spark://spark-master:7077 docker compose up -d spark-streaming
+  # -------------------------------------------------------------------------
+  spark-master:
+    image: ghana-dep/spark:3.5.3
+    container_name: gdep-spark-master
+    profiles: ["cluster"]
+    ports:
+      - "${SPARK_MASTER_UI_PORT:-8081}:8080"
+      - "7077:7077"
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_MASTER_HOST: spark-master
+    command: ["start-master.sh"]
+    volumes:
+      - lake-data:/data/lake
+      - checkpoint-data:/data/checkpoints
+    restart: unless-stopped
+
+  spark-worker:
+    image: ghana-dep/spark:3.5.3
+    container_name: gdep-spark-worker
+    profiles: ["cluster"]
+    ports:
+      - "${SPARK_WORKER_UI_PORT:-8082}:8081"
+    environment:
+      SPARK_NO_DAEMONIZE: "true"
+      SPARK_WORKER_CORES: ${SPARK_WORKER_CORES:-2}
+      SPARK_WORKER_MEMORY: ${SPARK_WORKER_MEMORY:-2g}
+    command: ["start-worker.sh", "spark://spark-master:7077"]
+    volumes:
+      - lake-data:/data/lake
+      - checkpoint-data:/data/checkpoints
+    depends_on:
+      - spark-master
+    restart: unless-stopped
+
+volumes:
+  kafka-data:
+  pg-data:
+  grafana-data:
+  lake-data:
+  checkpoint-data:

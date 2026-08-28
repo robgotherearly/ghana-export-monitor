@@ -1,0 +1,1389 @@
+{
+  "id": null,
+  "uid": "gdep-live",
+  "title": "Ghana Live Market Monitor",
+  "description": "Live cocoa, gold, crude and cedi telemetry from the Kafka \u2192 Spark \u2192 Postgres pipeline.",
+  "tags": [
+    "ghana",
+    "streaming",
+    "kafka",
+    "spark"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Cedi & commodities \u2014 live",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "USD / GHS",
+      "description": "Cedi per US dollar. Rising = the cedi is weakening.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "valueSize": 34
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, rate\nFROM market.fx_ticks\nWHERE pair = 'USD/GHS' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Cocoa",
+      "description": "USD / tonne",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "valueSize": 34
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, price\nFROM market.commodity_ticks\nWHERE symbol = 'COCOA' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Gold",
+      "description": "USD / troy oz",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "valueSize": 34
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, price\nFROM market.commodity_ticks\nWHERE symbol = 'GOLD' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Crude (WTI)",
+      "description": "USD / barrel",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "valueSize": 34
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, price\nFROM market.commodity_ticks\nWHERE symbol = 'CRUDE' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Ticks ingested (last hour)",
+      "description": "Total events written by the streaming job in the last hour.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "valueSize": 34
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"ticks\"\nFROM (\n  SELECT ts_event FROM market.commodity_ticks WHERE ts_event > now() - interval '1 hour'\n  UNION ALL\n  SELECT ts_event FROM market.fx_ticks WHERE ts_event > now() - interval '1 hour'\n  UNION ALL\n  SELECT ts_event FROM market.weather_readings WHERE ts_event > now() - interval '1 hour'\n) t",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Open alerts (1h)",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "valueSize": 34
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS \"alerts\"\nFROM market.alerts\nWHERE ts_raised > now() - interval '1 hour'",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Price streams",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Cocoa \u2014 live price",
+      "description": "Ghana's #1 export. Raw ticks straight off commodity.prices.raw.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, price AS \"Cocoa (USD/t)\"\nFROM market.commodity_ticks\nWHERE symbol = 'COCOA' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Cedi crosses \u2014 live",
+      "description": "GHS per unit of USD / EUR / GBP.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "none",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, rate AS value, pair AS metric\nFROM market.fx_ticks\nWHERE $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Gold \u2014 live price",
+      "description": "Ghana's #2 export.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 8,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, price AS \"Gold (USD/oz)\"\nFROM market.commodity_ticks\nWHERE symbol = 'GOLD' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Crude (WTI) \u2014 live price",
+      "description": "Ghana exports crude and imports refined fuel \u2014 it cuts both ways.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 15,
+        "w": 8,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_event AS time, price AS \"WTI (USD/bbl)\"\nFROM market.commodity_ticks\nWHERE symbol = 'CRUDE' AND $__timeFilter(ts_event)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Rolling 5-min % change",
+      "description": "Spark Structured Streaming output: (last - first) / first over the window.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 15,
+        "w": 8,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT window_start AS time, pct_change AS value, symbol AS metric\nFROM market.commodity_metrics\nWHERE $__timeFilter(window_start)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "Streaming metrics \u2014 Spark rolling windows",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 15,
+      "type": "gauge",
+      "title": "Volatility (5-min coeff. of variation)",
+      "description": "stddev / mean over the rolling window, per symbol.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 8,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "percent",
+          "decimals": 3,
+          "min": 0,
+          "max": 0.4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.25
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "minVizWidth": 75,
+        "minVizHeight": 75
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "-- The newest sliding window has only just opened and usually holds a single\n-- tick, so its stddev is 0. Read the newest *closed* window that actually has\n-- enough ticks to have a spread.\nSELECT DISTINCT ON (symbol) symbol, volatility_pct\nFROM market.commodity_metrics\nWHERE window_start > now() - interval '30 minutes'\n  AND window_end <= now()\n  AND tick_count >= 3\nORDER BY symbol, window_start DESC",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Anomaly z-score vs. threshold",
+      "description": "(last - mean) / stddev per rolling window. Past \u00b12.5\u03c3 raises an alert.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 23,
+        "w": 16,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "none",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT window_start AS time, zscore AS value, symbol AS metric\nFROM market.commodity_metrics\nWHERE $__timeFilter(window_start) AND zscore IS NOT NULL\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "row",
+      "title": "Alerts \u2014 alerts.flagged",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 18,
+      "type": "table",
+      "title": "Flagged events (most recent first)",
+      "description": "Written by the Spark job to Postgres and republished to the alerts.flagged topic.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "CRITICAL"
+                      },
+                      "warning": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "WARNING"
+                      },
+                      "info": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "INFO"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "raised"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 190
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ts_raised AS \"raised\",\n       severity   AS \"severity\",\n       entity     AS \"entity\",\n       rule       AS \"rule\",\n       message    AS \"what happened\",\n       round(observed::numeric, 3)  AS \"observed\",\n       round(threshold::numeric, 3) AS \"threshold\"\nFROM market.alerts\nWHERE $__timeFilter(ts_raised)\nORDER BY ts_raised DESC\nLIMIT 100",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "Cocoa belt weather",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "geomap",
+      "title": "Live conditions across the cocoa regions",
+      "description": "Marker size = precipitation, colour = temperature. Open-Meteo, live.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "celsius",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "view": {
+          "id": "coords",
+          "lat": 6.4,
+          "lon": -1.4,
+          "zoom": 6.6
+        },
+        "basemap": {
+          "type": "osm-standard",
+          "name": "OpenStreetMap",
+          "config": {}
+        },
+        "controls": {
+          "showZoom": true,
+          "showAttribution": true,
+          "mouseWheelZoom": false
+        },
+        "tooltip": {
+          "mode": "details"
+        },
+        "layers": [
+          {
+            "type": "markers",
+            "name": "Stations",
+            "location": {
+              "mode": "coords",
+              "latitude": "latitude",
+              "longitude": "longitude"
+            },
+            "tooltip": true,
+            "config": {
+              "showLegend": true,
+              "style": {
+                "color": {
+                  "field": "temp_c",
+                  "fixed": "dark-green"
+                },
+                "opacity": 0.8,
+                "rotation": {
+                  "fixed": 0,
+                  "max": 360,
+                  "min": -360,
+                  "mode": "mod"
+                },
+                "size": {
+                  "field": "precip_mm",
+                  "fixed": 6,
+                  "max": 18,
+                  "min": 6
+                },
+                "symbol": {
+                  "fixed": "img/icons/marker/circle.svg",
+                  "mode": "fixed"
+                },
+                "symbolAlign": {
+                  "horizontal": "center",
+                  "vertical": "center"
+                },
+                "textConfig": {
+                  "fontSize": 12,
+                  "offsetX": 0,
+                  "offsetY": -14,
+                  "textAlign": "center",
+                  "textBaseline": "middle"
+                },
+                "text": {
+                  "field": "station",
+                  "fixed": ""
+                }
+              }
+            }
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT station, admin_region, latitude, longitude, temp_c, humidity_pct, precip_mm, condition\nFROM market.weather_latest\nORDER BY station",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Region readings",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT station        AS \"station\",\n       admin_region   AS \"region\",\n       round(temp_c::numeric, 1)       AS \"temp \u00b0C\",\n       round(humidity_pct::numeric, 0) AS \"humidity %\",\n       round(precip_mm::numeric, 2)    AS \"precip mm\",\n       condition      AS \"conditions\",\n       ts_event       AS \"observed\"\nFROM market.weather_latest\nORDER BY cocoa_belt DESC, station",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Cocoa price vs. cocoa-belt rainfall",
+      "description": "Stream-static join: cocoa price windows enriched with the latest belt weather.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "pointSize": 5,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Belt rainfall (mm)"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "lengthmm"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 40
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT window_start AS time,\n       last_price           AS \"Cocoa (USD/t)\",\n       belt_total_precip_mm AS \"Belt rainfall (mm)\"\nFROM market.cocoa_weather_context\nWHERE $__timeFilter(window_start)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    }
+  ]
+}

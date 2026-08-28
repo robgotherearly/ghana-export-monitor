@@ -1,0 +1,708 @@
+{
+  "id": null,
+  "uid": "gdep-batch",
+  "title": "Ghana Analytical Layer",
+  "description": "Nightly Spark batch output: daily OHLC, cedi trend, cocoa seasonality, weather correlations.",
+  "tags": [
+    "ghana",
+    "batch",
+    "spark",
+    "delta"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Daily bars \u2014 Spark batch",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "candlestick",
+      "title": "Cocoa daily OHLC",
+      "description": "Recomputed nightly from the Delta lake. Re-running the job is idempotent.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "pointSize": 5
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "mode": "candles",
+        "candleStyle": "candles",
+        "colorStrategy": "open-close",
+        "colors": {
+          "down": "red",
+          "up": "green",
+          "flat": "gray"
+        },
+        "includeAllFields": false,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "fields": {
+          "open": "open",
+          "high": "high",
+          "low": "low",
+          "close": "close"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT trade_date AS time, open_price AS open, high_price AS high,\n       low_price AS low, close_price AS close\nFROM market.daily_ohlc\nWHERE symbol = 'COCOA' AND $__timeFilter(trade_date)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "candlestick",
+      "title": "Gold daily OHLC",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 12,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "pointSize": 5
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "mode": "candles",
+        "candleStyle": "candles",
+        "colorStrategy": "open-close",
+        "colors": {
+          "down": "red",
+          "up": "green",
+          "flat": "gray"
+        },
+        "includeAllFields": false,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "fields": {
+          "open": "open",
+          "high": "high",
+          "low": "low",
+          "close": "close"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT trade_date AS time, open_price AS open, high_price AS high,\n       low_price AS low, close_price AS close\nFROM market.daily_ohlc\nWHERE symbol = 'GOLD' AND $__timeFilter(trade_date)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Cedi trend",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "USD/GHS close with 7d & 30d moving averages",
+      "description": "Moving averages need history; with one day in the lake they equal the close.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 14,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "gradientMode": "opacity",
+            "showPoints": "always",
+            "spanNulls": true,
+            "pointSize": 7,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "none",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT trade_date AS time,\n       close_rate AS \"close\",\n       ma_7       AS \"7-day MA\",\n       ma_30      AS \"30-day MA\"\nFROM market.cedi_depreciation\nWHERE pair = 'USD/GHS' AND $__timeFilter(trade_date)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Cedi depreciation over 1d / 7d / 30d",
+      "description": "Positive = the cedi lost ground over that horizon. Each series stays empty until the lake holds that many days of closes.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 11,
+        "w": 10,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 60,
+            "gradientMode": "opacity",
+            "showPoints": "always",
+            "spanNulls": true,
+            "pointSize": 7,
+            "axisBorderShow": false,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "unit": "percent",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT trade_date AS time,\n       change_1d_pct  AS \"1 day\",\n       change_7d_pct  AS \"7 day\",\n       change_30d_pct AS \"30 day\"\nFROM market.cedi_depreciation\nWHERE pair = 'USD/GHS' AND $__timeFilter(trade_date)\nORDER BY 1",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Cocoa seasonality \u2014 main crop Oct\u2013Mar, light crop Apr\u2013Sep",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Monthly average cocoa price by crop phase",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 14,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "axisBorderShow": false,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "lineWidth": 1,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.85,
+        "fullHighlight": false,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT to_char(month_start, 'YYYY-MM') AS \"month\",\n       round(avg_price::numeric, 2)    AS \"avg price\",\n       crop_phase                      AS \"phase\"\nFROM market.cocoa_seasonal\nORDER BY month_start",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Season summary",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 20,
+        "w": 10,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT season                        AS \"season\",\n       crop_phase                    AS \"phase\",\n       to_char(month_start,'YYYY-MM') AS \"month\",\n       round(avg_price::numeric, 2)  AS \"avg\",\n       round(min_price::numeric, 2)  AS \"low\",\n       round(max_price::numeric, 2)  AS \"high\",\n       observations                  AS \"obs\"\nFROM market.cocoa_seasonal\nORDER BY month_start DESC\nLIMIT 24",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Weather / price correlation & pipeline health",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Cocoa price vs. regional weather (hourly buckets)",
+      "description": "n is written alongside so a correlation built on thin history is visibly thin.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 14,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "correlation"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "semi-dark-blue",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -0.2
+                    },
+                    {
+                      "color": "semi-dark-orange",
+                      "value": 0.2
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT region_id    AS \"region\",\n       metric       AS \"weather metric\",\n       round(correlation::numeric, 3) AS \"correlation\",\n       observations AS \"n\",\n       computed_at  AS \"computed\"\nFROM market.weather_price_correlation\nWHERE symbol = 'COCOA'\nORDER BY abs(coalesce(correlation, 0)) DESC\nLIMIT 40",
+          "editorMode": "code"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Batch runs",
+      "description": "",
+      "datasource": {
+        "type": "postgres",
+        "uid": "ghana-dep-pg"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 30,
+        "w": 10,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "succeeded": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "failed": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "ghana-dep-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT job_name    AS \"job\",\n       started_at  AS \"started\",\n       status      AS \"status\",\n       rows_written AS \"rows\",\n       detail      AS \"detail\"\nFROM market.pipeline_runs\nORDER BY started_at DESC\nLIMIT 20",
+          "editorMode": "code"
+        }
+      ]
+    }
+  ]
+}

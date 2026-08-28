@@ -1,0 +1,40 @@
+[project]
+name = "ghana-export-monitor"
+version = "1.0.0"
+description = "Live cocoa, gold, crude and cedi telemetry: Kafka -> Spark -> Postgres -> Grafana"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["grafana", "data"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "SIM",  # simplify
+    "C4",   # comprehensions
+]
+ignore = [
+    # Spark and confluent-kafka callbacks have signatures we do not control,
+    # and a bare `except` around a provider is deliberate: one bad upstream
+    # must demote to the next provider, never take the poller down.
+    "B008",   # function call in default argument (used for settings defaults)
+    "E501",   # line length is enforced by the formatter, not the linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Both Spark entry points must extend sys.path before importing the package,
+# so their imports cannot sit at the top of the file.
+"batch/daily_batch.py" = ["E402"]
+"streaming/stream_metrics.py" = ["E402"]
+# Tests reach into provider internals on purpose to simulate rate limits.
+"tests/*" = ["SLF001"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

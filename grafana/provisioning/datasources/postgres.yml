@@ -1,0 +1,22 @@
+apiVersion: 1
+
+datasources:
+  - name: GhanaDEP
+    uid: ghana-dep-pg
+    type: postgres
+    access: proxy
+    url: ${GDEP_PG_HOST}
+    database: ${GDEP_PG_DB}
+    # SELECT-only role created by sql/init/01_schema.sql
+    user: grafana_ro
+    isDefault: true
+    editable: false
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: grafana_ro

@@ -1,0 +1,19 @@
+.env
+data/
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.idea/
+.vscode/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# scratch / local artefacts
+spark.log
+full.log
+watch.log
+*.png
